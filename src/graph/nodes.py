@@ -104,7 +104,21 @@ def supervisor_node(state: State) -> Command[Literal[*TEAM_MEMBERS, "__end__"]]:
         .with_structured_output(schema=Router, method="json_mode")
         .invoke(messages)
     )
-    goto = response["next"]
+    
+    # Add error handling to safely extract the 'next' key
+    try:
+        goto = response["next"]
+    except KeyError:
+        # Log the error and provide fallback behavior
+        logger.error(f"KeyError: 'next' not found in supervisor response: {response}")
+        # Check if response might be a Router instance with a different structure
+        if hasattr(response, 'next'):
+            goto = response.next
+        else:
+            # Default to a safe fallback - ending the workflow
+            goto = "FINISH"
+            logger.warning("Using fallback 'FINISH' due to missing 'next' key")
+    
     logger.debug(f"Current state messages: {state['messages']}")
     logger.debug(f"Supervisor response: {response}")
 
